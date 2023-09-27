@@ -33,7 +33,6 @@ rm -f log
 # donwload index and rpms
 # https://nexus.cmn.alps.cscs.ch/service/rest/repository/browse/cpe-23.05-sles15-sp4/
 index=$(curl -ks $proxy $repo | python parse-index.py 2> /dev/null)
-echo $index > debug-index
 echo > version.table
 rm -rf downloads && mkdir -p downloads
 while IFS=' ' read -r name url version; do
