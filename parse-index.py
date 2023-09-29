@@ -118,7 +118,7 @@ def find_cray_pmi(index_df: pd.DataFrame) -> dict:
     matches_indices = np.where(
         names.str.contains(r"cray-pmi(?!.*(doc))(-devel|)-[0-9]+\.[0-9]+\.[0-9]+-", regex=True)
     )[0]
-    if len(matches_indices) == 2:
+    if len(matches_indices) > 0:
         cray_pmi = names.iloc[matches_indices[0]]
         pattern = r"cray-pmi-([0-9]+\.[0-9]+\.[0-9]+)"
         match = re.match(pattern, cray_pmi)
@@ -158,13 +158,13 @@ if __name__ == "__main__":
     mpich_gnu = find_cray_mpich_gnu(df)
     mpich_nvhpc = find_cray_mpich_nvhpc(df)
     pals = find_cray_pals(df)
-    pmi, pmi_devel = find_cray_pmi(df)
+    pmi = find_cray_pmi(df)
     mpich_gtl = find_cray_mpich_gtl(df, mpich_ver=mpich_gnu["Version"])
 
     # print table: Name, URL, Version
     lines = [
         (y["Name"], y["URL"], y["Version"])
-        for y in [mpich_gnu, mpich_nvhpc, pmi, pmi_devel, mpich_gtl, pals]
+        for y in [mpich_gnu, mpich_nvhpc, *pmi, mpich_gtl, pals]
     ]
     for line in lines:
         print(*line, end="\n")
