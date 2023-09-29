@@ -101,8 +101,9 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 				-e 's#^exec_prefix=.*#exec_prefix=$prefix#' \
 				-e 's#^sysconfdir=.*#sysconfdir=$prefix/etc#' \
 				-e 's#^includedir=.*#includedir=$prefix/include#' \
+				-e 's#^modincdir=.*#modincdir=$prefix/include#' \
 				-e 's#^libdir=.*#libdir=$prefix/lib#' $i
-			sed -i '/^[[:space:]]*\$Show /s/-lmpi_gnu_91 /-lmpi_gnu_91 @@GTL_LIBRARY@@ /' $i
+			  sed -i '/^[[:space:]]*\$Show /s/-lmpi_gnu_91 /-lmpi_gnu_91 @@GTL_LIBRARY@@ /' $i
 		done
 		sed -i 's/^CXX.*/CXX="@@CXX@@"/' mpicxx
 		sed -i 's/^CC.*/CC="@@CC@@"/' mpicc
@@ -111,15 +112,16 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 	## MPICH-NVHPC
 	mkdir -p unpack/mpich/mpich-nvhpc
 	find downloads -name "*mpich*nvidia*" \
-		-exec sh -c "rpm2cpio {} | bsdtar -C unpack/mpich/mpich-nvhpc --include='opt/cray/pe/mpich/*/ofi/nvidia/*' -xf - --strip-components=9 " \;
+		   -exec sh -c "rpm2cpio {} | bsdtar -C unpack/mpich/mpich-nvhpc --include='opt/cray/pe/mpich/*/ofi/nvidia/*' -xf - --strip-components=9 " \;
 	#tree -d unpack/mpich/mpich-nvhpc >>log
 	(
-		cd unpack/mpich/mpich-nvhpc/bin || exit 1
-		for i in mpicc mpicxx mpifort; do
-			sed -i -e 's#^prefix=.*#prefix="@@PREFIX@@"#' \
-				-e 's#^exec_prefix=.*#exec_prefix=$prefix#' \
-				-e 's#^sysconfdir=.*#sysconfdir=$prefix/etc#' \
-				-e 's#^includedir=.*#includedir=$prefix/include#' \
+		  cd unpack/mpich/mpich-nvhpc/bin || exit 1
+		  for i in mpicc mpicxx mpifort; do
+			    sed -i -e 's#^prefix=.*#prefix="@@PREFIX@@"#' \
+				    -e 's#^exec_prefix=.*#exec_prefix=$prefix#' \
+				    -e 's#^sysconfdir=.*#sysconfdir=$prefix/etc#' \
+				    -e 's#^includedir=.*#includedir=$prefix/include#' \
+				    -e 's#^modincdir=.*#modincdir=$prefix/include#' \
 				-e 's#^libdir=.*#libdir=$prefix/lib#' $i
 			sed -i '/^[[:space:]]*\$Show /s/-lmpi_nvidia /-lmpi_nvidia @@GTL_LIBRARY@@ /' $i
 		done
