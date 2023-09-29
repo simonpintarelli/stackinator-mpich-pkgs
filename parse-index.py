@@ -67,7 +67,7 @@ def find_cray_mpich_gnu(index_df: pd.DataFrame) -> dict:
             .iloc[0]
             .to_dict()
         )
-    raise Exception("Could not find cray-mpich-[version]-gnu-*")
+    raise Exception(f"Could not find cray-mpich-[version]-gnu-*{index_df.iloc[matches_indices]}")
 
 
 def find_cray_mpich_nvhpc(index_df: pd.DataFrame) -> dict:
@@ -116,7 +116,7 @@ def find_cray_pmi(index_df: pd.DataFrame) -> dict:
     """Find cray-pmi and cray-pmi-devel"""
     names = index_df["Name"]
     matches_indices = np.where(
-        names.str.contains(r"cray-pmi(-devel|)-[0-9]+\.[0-9]+\.[0-9]+-", regex=True)
+        names.str.contains(r"cray-pmi(?!.*(doc))(-devel|)-[0-9]+\.[0-9]+\.[0-9]+-", regex=True)
     )[0]
     if len(matches_indices) == 2:
         cray_pmi = names.iloc[matches_indices[0]]
@@ -129,7 +129,7 @@ def find_cray_pmi(index_df: pd.DataFrame) -> dict:
             .assign(Version=match.group(1))
             .to_dict(orient="records")
         )
-    raise Exception("Could not find cray-pmi-[version]-*")
+    raise Exception(f"Could not find cray-pmi-[version]-* {index_df.iloc[matches_indices]}")
 
 
 def find_cray_mpich_gtl(index_df: pd.DataFrame, mpich_ver) -> dict:
