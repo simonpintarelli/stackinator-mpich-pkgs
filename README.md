@@ -12,6 +12,11 @@ Example:
 
 ## Hashes
 ```
+5ac6b0877fd0f6afaaf391fffef41daf4d3150edc3250721c9abd4ded6b58486  22.08-sp3/archives/cray-gtl-8.1.18.tar.gz
+45d519be217cea89c58893d25826b15d99183247d15ecee9c3f64913660d79c2  22.08-sp3/archives/cray-mpich-8.1.18.tar.gz
+eaefdd5d7e8031a617ecb1277d4fc79cc34b150a1d109358db0118f66de45a14  22.08-sp3/archives/cray-pals-1.2.0.tar.gz
+4fc1f8cc32a98f7f3d339915564347b75db8c373647f748bde01daaf0ac4bf70  22.08-sp3/archives/cray-pmi-6.0.17.tar.gz
+
 44ba43d31721031d54bdce5b722ed0cd7f3bc39dae08141b93b2e779b7900e4e  22.11-sp3/archives/cray-gtl-8.1.21.tar.gz
 ea8921a2f08b0a85e35c2123235f09d2f86d9b092f32f72c5e025e8c5264732e  22.11-sp3/archives/cray-mpich-8.1.21.tar.gz
 ec5b61a9dcabb6acf2edba305570f0ed9beed80ccec2d3a3f0afd853f080645b  22.11-sp3/archives/cray-pals-1.2.4.tar.gz
