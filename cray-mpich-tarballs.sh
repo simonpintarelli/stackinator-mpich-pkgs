@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 
-set -eu -o pipefail
+set -eux -o pipefail
 
 # Default value for proxy
 proxy=""
