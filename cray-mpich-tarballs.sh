@@ -62,7 +62,7 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 	find downloads -name "*pals*.rpm" \
 		-exec sh -c 'rpm2cpio {} | bsdtar -C unpack/pals  -xf - --strip-components=6' \;
 	version=$(grep pals version.table | head -n1 | cut -f2 -d ' ')
-	tree unpack/pals >>log
+	#tree unpack/pals >>log
 	tar czf "archives/cray-pals-${version}.tar.gz" "${tar_args[@]}" --exclude=*.a --exclude=*/pkgconfig/* unpack/pals
 
 	## ---
@@ -73,7 +73,7 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 	find downloads -name "*pmi*.rpm" \
 		-exec sh -c 'rpm2cpio {} | bsdtar -C unpack/pmi  -xf - --strip-components=6' \;
 	version=$(grep cray-pmi version.table | head -n1 | cut -f2 -d ' ')
-	tree unpack/pmi >>log
+	#tree unpack/pmi >>log
 	tar czf "archives/cray-pmi-${version}.tar.gz" "${tar_args[@]}" --exclude=*.a --exclude=*/pkgconfig/* unpack/pmi
 
 	## ---
@@ -83,7 +83,7 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 	mkdir -p unpack/gtl
 	find downloads -name "cray-mpich*gtl*" \
 		-exec sh -c "rpm2cpio {} | bsdtar -C unpack/gtl --include='opt/cray/pe/mpich/*' -xf - --strip-components=7" \;
-	tree -d unpack/gtl >>log
+	#tree -d unpack/gtl >>log
 	version=$(grep gtl version.table | head -n1 | cut -f2 -d ' ')
 	tar czf "archives/cray-gtl-${version}.tar.gz" "${tar_args[@]}" --exclude=*.a unpack/gtl
 
@@ -93,7 +93,7 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 	mkdir -p unpack/mpich/mpich-gcc
 	find downloads -name "*mpich*gnu*" \
 		-exec sh -c "rpm2cpio {} | bsdtar -C unpack/mpich/mpich-gcc --include='opt/cray/pe/mpich/*/ofi/gnu/*' -xf - --strip-components=9 " \;
-	tree -d unpack/mpich/mpich-gcc >>log
+	#tree -d unpack/mpich/mpich-gcc >>log
 	(
 		cd unpack/mpich/mpich-gcc/bin || exit 1
 		for i in mpicc mpicxx mpifort; do
@@ -112,7 +112,7 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 	mkdir -p unpack/mpich/mpich-nvhpc
 	find downloads -name "*mpich*nvidia*" \
 		-exec sh -c "rpm2cpio {} | bsdtar -C unpack/mpich/mpich-nvhpc --include='opt/cray/pe/mpich/*/ofi/nvidia/*' -xf - --strip-components=9 " \;
-	tree -d unpack/mpich/mpich-nvhpc >>log
+	#tree -d unpack/mpich/mpich-nvhpc >>log
 	(
 		cd unpack/mpich/mpich-nvhpc/bin || exit 1
 		for i in mpicc mpicxx mpifort; do
