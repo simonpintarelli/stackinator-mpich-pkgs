@@ -5,6 +5,9 @@ set -eux -o pipefail
 # Default value for proxy
 proxy=""
 
+
+tar_args=(--sort=name --owner=0 --group=0 --numeric-owner --mode=go="rX,u+rw,a-s" --mtime="1970-01-01 01:01:01")
+
 # Parse command-line options
 while getopts "p:" opt; do
 	case "$opt" in
@@ -50,7 +53,7 @@ find downloads -name "*pals*.rpm" \
 version=$(grep pals version.table | head -n1 | cut -f2 -d ' ')
 tree unpack/pals >>log
 mkdir -p archives
-tar czf "archives/cray-pals-${version}.tar.gz" --exclude=*.a --exclude=*/pkgconfig/* unpack/pals
+tar czf "archives/cray-pals-${version}.tar.gz" "${tar_args[@]}" --exclude=*.a --exclude=*/pkgconfig/* unpack/pals
 
 ## ---
 ## PMI
@@ -62,7 +65,7 @@ find downloads -name  "*pmi*.rpm" \
 version=$(grep cray-pmi version.table | head -n1 | cut -f2 -d ' ')
 tree unpack/pmi >>log
 mkdir -p archives
-tar czf "archives/cray-pmi-${version}.tar.gz" --exclude=*.a --exclude=*/pkgconfig/* unpack/pmi
+tar czf "archives/cray-pmi-${version}.tar.gz" "${tar_args[@]}" --exclude=*.a --exclude=*/pkgconfig/* unpack/pmi
 
 ## ---
 ## GTL
@@ -74,7 +77,7 @@ find downloads -name  "cray-mpich*gtl*" \
 tree -d unpack/gtl >>log
 version=$(grep gtl version.table | head -n1 | cut -f2 -d ' ')
 mkdir -p archives
-tar czf "archives/cray-gtl-${version}.tar.gz" --exclude=*.a unpack/gtl
+tar czf "archives/cray-gtl-${version}.tar.gz" "${tar_args[@]}" --exclude=*.a unpack/gtl
 
 echo "Processing cray-mpich"
 rm -rf unpack/mpich
@@ -119,6 +122,6 @@ tree -d unpack/mpich/mpich-nvhpc >>log
 )
 version=$(grep mpich version.table | grep gnu | cut -f2 -d ' ')
 mkdir -p archives
-tar czf "archives/cray-mpich-${version}.tar.gz" --exclude=*.a --exclude=*/pkgconfig/* --exclude=lib-abi-mpich unpack/mpich
+tar czf "archives/cray-mpich-${version}.tar.gz" "${tar_args[@]}" --exclude=*.a --exclude=*/pkgconfig/* --exclude=lib-abi-mpich unpack/mpich
 
 sha256sum archives/*tar.gz
