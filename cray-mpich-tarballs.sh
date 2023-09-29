@@ -6,6 +6,7 @@ set -eux -o pipefail
 proxy=""
 dest="output"
 
+# make sure sha256 don't change
 tar_args=(--sort=name --owner=0 --group=0 --numeric-owner --mode=go="rX,u+rw,a-s" --mtime="1970-01-01 01:01:01")
 
 usage="Usage: $0 [-p proxy -o workdir] repo"
