@@ -2,6 +2,12 @@
 
 """
 Read html index of nexus repository, retrieve versions, filename and url for cray-[mpich, gtl, pmi, pals].
+
+Output: prints a list of filename, URL, version:
+    `
+    <pkgA>.rpm <URL> <VERSION>
+    <pgkB>.rpm <URL> <VERSION>
+    `
 """
 
 from bs4 import BeautifulSoup
