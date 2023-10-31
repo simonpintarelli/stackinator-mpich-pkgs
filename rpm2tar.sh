@@ -82,6 +82,10 @@ find ${rpmdir} -name "cray-mpich*gtl*" \
 version=$(grep gtl ${version_table} | head -n1 | cut -f2 -d ' ')
 tar czf "archives/cray-gtl-${version}.tar.gz" "${tar_args[@]}" --exclude=*.a unpack/gtl
 
+
+## ---
+## GTL
+## ---
 echo "Processing cray-mpich"
 mkdir -p unpack/mpich
 ## MPICH-GCC
