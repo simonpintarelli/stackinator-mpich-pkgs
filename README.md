@@ -1,5 +1,5 @@
 # stackinator-mpich-pkgs
-Fetch cray-mpich, cray-gtl, cray-pmi, cray-pals from nexus and create binary tarballs. Patch `mpicc`, `mpicxx`, `mpifort` for stackinator cray-mpich spack package.
+Fetch cray-mpich, cray-gtl, cray-pmi, cray-pals from nexus repository and create binary tarballs. Patch `mpicc`, `mpicxx`, `mpifort` for stackinator cray-mpich spack package.
 
 ```bash
 Usage: ./cray-mpich-tarballs.sh [-p proxy] [-o destdir] repo
@@ -46,4 +46,34 @@ de6c6b3e31ff884c0192c7bac7b999167710850cae8a663f5c20c4af30f40c3d  23.05-sp4/arch
 
 
 ## Notes
-- `cray-mpich-8.1.18-nvidia207-0-4.sles15sp3.x86_64.rpm` doesn't contain mpicc, mpicxx, mpifort
+- In `cray-mpich-8.1.18-nvidia207-0-4.sles15sp3.x86_64.rpm` `bin/mpicc`, `bin/mpicxx`, `bin/mpifort` are missing
+
+
+## Build directly from rpms on disk
+
+Prerequisites:
+- rpms for `gtl`, `pals`, `pmi` and `mpich` are available locally.
+- a file `version.table` with  entries
+```
+<filename1>.rpm <version1>
+...
+<filenameN>.rpm <versionN>
+```
+
+### Examples
+
+Create `cray-mpich-<mpich-ver>-gcc.tar.gz` and `cray-mpich-<mpich-ver>-nvhpc.tar.gz` with `pmi`, `gtl`, `pals` included (`-i`).
+```bash
+./rpm2tar.sh -s /path/to/rpms_dir -t version.table -i
+```
+
+Create `cray-mpich-<mpich-ver>.tar.gz` containing both `nvhpc` and `gcc` in subdirectories.  With `pmi`, `gtl`, `pals` included.
+```bash
+./rpm2tar.sh -s /path/to/rpms_dir -t version.table -i -x
+```
+
+Create `cray-mpich-<mpich-ver>.tar.gz` containing both `nvhpc` and `gcc` in subdirectories (`-x`). `pmi`, `gtl`, `pals` in separate tarballs.
+```bash
+./rpm2tar.sh -s /path/to/rpms_dir -t version.table -x
+```
+
