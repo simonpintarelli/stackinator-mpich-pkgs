@@ -7,14 +7,14 @@ proxy=""
 dest="output"
 separate_packages=1
 
-usage="Usage: $0 [-p proxy -o workdir -u] repo"
+usage="Usage: $0 [-p proxy] [-o workdir] [-i] repo"
 # Parse command-line options
-while getopts "p: o: u" opt; do
+while getopts "p: o: i" opt; do
 	  case "$opt" in
 	      p)
 		        proxy="--socks5-hostname $OPTARG"
 		        ;;
-        u)
+        i)
 		        separate_packages=0
 		        ;;
 	      o)
@@ -60,7 +60,7 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
     if [[ $separate_packages -eq 1 ]]; then
         ${SCRIPT_DIR}/rpm2tar.sh -t version.table -s ${rpmdir}
     else
-        ${SCRIPT_DIR}/rpm2tar.sh -t version.table -s ${rpmdir} -u
+        ${SCRIPT_DIR}/rpm2tar.sh -t version.table -s ${rpmdir} -i
   fi
 )
 
