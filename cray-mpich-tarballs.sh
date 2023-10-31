@@ -5,29 +5,33 @@ set -eux -o pipefail
 # Default value for proxy
 proxy=""
 dest="output"
+separate_packages=1
 
-usage="Usage: $0 [-p proxy -o workdir] repo"
+usage="Usage: $0 [-p proxy -o workdir -u] repo"
 # Parse command-line options
-while getopts "p: o:" opt; do
-	case "$opt" in
-	p)
-		proxy="--socks5-hostname $OPTARG"
-		;;
-	o)
-		dest="$OPTARG"
-		;;
-	*)
-		echo "${usage}"
-		exit 1
-		;;
-	esac
+while getopts "p: o: u" opt; do
+	  case "$opt" in
+	      p)
+		        proxy="--socks5-hostname $OPTARG"
+		        ;;
+        u)
+		        separate_packages=0
+		        ;;
+	      o)
+		        dest="$OPTARG"
+		        ;;
+	      *)
+		        echo "${usage}"
+		        exit 1
+		        ;;
+	  esac
 done
 shift $((OPTIND - 1))
 
 # Check for remaining arguments
 if [[ $# -lt 1 ]]; then
-	echo "${usage}"
-	exit 1
+	  echo "${usage}"
+	  exit 1
 fi
 
 repo="$1"
@@ -48,13 +52,16 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
     # debug putput
 	  echo >version.table
 	  rm -rf ${rpmdir} && mkdir -p ${rpmdir}
-	while IFS=' ' read -r name url version; do
-		echo "$name $version" >>version.table
-		curl -k $proxy -o ${rpmdir}/$name $url
-	done <<<"$index"
+	  while IFS=' ' read -r name url version; do
+		    echo "$name $version" >>version.table
+		    curl -k $proxy -o ${rpmdir}/$name $url
+	  done <<<"$index"
 
-  ${SCRIPT_DIR}/rpm2tar.sh -t version.table -s ${rpmdir}
-
+    if [[ $separate_packages -eq 1 ]]; then
+        ${SCRIPT_DIR}/rpm2tar.sh -t version.table -s ${rpmdir}
+    else
+        ${SCRIPT_DIR}/rpm2tar.sh -t version.table -s ${rpmdir} -u
+  fi
 )
 
 sha256sum "${dest}"/archives/*tar.gz
