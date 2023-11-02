@@ -76,12 +76,22 @@ rpm2tar_pals() {
 	echo "Processing cray-pals"
 	_dst=$1
 	mkdir -p ${_dst}
+
+  # extract rpm to tmpdir
+  tmpdir=$(mktemp -d)
 	find ${rpmdir} -name "*pals*.rpm" \
-		-exec sh -c "rpm2cpio {} | bsdtar -C ${_dst}  -xf - --strip-components=6" \;
-	version=$(grep pals ${version_table} | head -n1 | cut -f2 -d ' ')
+		   -exec sh -c "rpm2cpio {} | cpio -idmv -D ${tmpdir}" \;
+  # find include, bin, lib directory in tmpdir
+  find ${tmpdir} -name include -type d -exec cp -a {} ${_dst} \;
+  find ${tmpdir} -name bin -type d -exec cp -a {} ${_dst} \;
+  find ${tmpdir} -name lib -type d -exec cp -a {} ${_dst} \;
+
+  rm -r ${tmpdir}
+
 	#tree unpack/pals >>log
 	if [[ $separate_packages -eq 1 ]]; then
-		tar czf "${dstdir}/cray-pals-${version}.tar.gz" "${tar_args[@]}" --exclude=*.a --exclude=*/pkgconfig/* ${_dst}
+	    version=$(grep pals ${version_table} | head -n1 | cut -f2 -d ' ')
+		  tar czf "${dstdir}/cray-pals-${version}.tar.gz" "${tar_args[@]}" --exclude=*.a --exclude=*/pkgconfig/* ${_dst}
 	fi
 }
 
@@ -92,12 +102,20 @@ rpm2tar_pmi() {
 	echo "Processing cray-pmi"
 	_dst=$1
 	mkdir -p ${_dst}
+  tmpdir=$(mktemp -d)
 	find ${rpmdir} -name "*pmi*.rpm" \
-		-exec sh -c "rpm2cpio {} | bsdtar -C ${_dst}  -xf - --strip-components=6" \;
-	version=$(grep cray-pmi ${version_table} | head -n1 | cut -f2 -d ' ')
+		-exec sh -c "rpm2cpio {} | cpio -idmv -D ${tmpdir}" \;
+  # find include, bin, lib directory in tmpdir
+  find ${tmpdir} -name include -type d -exec cp -a {} ${_dst} \;
+  find ${tmpdir} -name bin -type d -exec cp -a {} ${_dst} \;
+  find ${tmpdir} -name lib -type d -exec cp -a {} ${_dst} \;
+
+  rm -r ${tmpdir}
+
 	#tree unpack/pmi >>log
 	if [[ $separate_packages -eq 1 ]]; then
-		tar czf "${dstdir}/cray-pmi-${version}.tar.gz" "${tar_args[@]}" --exclude=*.a --exclude=*/pkgconfig/* ${_dst}
+	    version=$(grep cray-pmi ${version_table} | head -n1 | cut -f2 -d ' ')
+		  tar czf "${dstdir}/cray-pmi-${version}.tar.gz" "${tar_args[@]}" --exclude=*.a --exclude=*/pkgconfig/* ${_dst}
 	fi
 }
 
@@ -108,12 +126,19 @@ rpm2tar_gtl() {
 	echo "Processing cray-gtl"
 	_dst=$1
 	mkdir -p ${_dst}
+  tmpdir=$(mktemp -d)
 	find ${rpmdir} -name "cray-mpich*gtl*" \
-		-exec sh -c "rpm2cpio {} | bsdtar -C ${_dst} --include='opt/cray/pe/mpich/*' -xf - --strip-components=7" \;
-	#tree -d unpack/gtl >>log
-	version=$(grep gtl ${version_table} | head -n1 | cut -f2 -d ' ')
+		   -exec sh -c "rpm2cpio {} | cpio -idmv -D ${tmpdir}" \;
+  # find include, bin, lib directory in tmpdir
+  find ${tmpdir} -name include -type d -exec cp -a {} ${_dst} \;
+  find ${tmpdir} -name bin -type d -exec cp -a {} ${_dst} \;
+  find ${tmpdir} -name lib -type d -exec cp -a {} ${_dst} \;
+
+  rm -r ${tmpdir}
+
 	if [[ $separate_packages -eq 1 ]]; then
-		tar czf "${dstdir}/cray-gtl-${version}.tar.gz" "${tar_args[@]}" --exclude=*.a ${_dst}
+	    version=$(grep gtl ${version_table} | head -n1 | cut -f2 -d ' ')
+		  tar czf "${dstdir}/cray-gtl-${version}.tar.gz" "${tar_args[@]}" --exclude=*.a ${_dst}
 	fi
 }
 
@@ -125,9 +150,16 @@ repack_mpich-gcc() {
 	## MPICH-GCC
 	_dst=$1
 	mkdir -p ${_dst}
+  tmpdir=$(mktemp -d)
 	find ${rpmdir} -name "*mpich*gnu*" \
-		-exec sh -c "rpm2cpio {} | bsdtar -C ${_dst} --include='opt/cray/pe/mpich/*/ofi/gnu/*' -xf - --strip-components=9 " \;
-	#tree -d unpack/mpich/mpich-gcc >>log
+		-exec sh -c "rpm2cpio {} | cpio -idmv -D ${tmpdir}" \;
+  # find include, bin, lib directory in tmpdir
+  find ${tmpdir} -name include -type d -exec cp -a {} ${_dst} \;
+  find ${tmpdir} -name bin -type d -exec cp -a {} ${_dst} \;
+  find ${tmpdir} -name lib -type d -exec cp -a {} ${_dst} \;
+
+  rm -r ${tmpdir}
+
 	(
 		cd ${_dst}/bin || exit 1
 		for i in mpicc mpicxx mpifort; do
@@ -152,9 +184,16 @@ repack_mpich-nvhpc() {
 	## -----------
 	_dst=$1
 	mkdir -p ${_dst}
+  tmpdir=$(mktemp -d)
 	find ${rpmdir} -name "*mpich*nvidia*" \
-		-exec sh -c "rpm2cpio {} | bsdtar -C ${_dst} --include='opt/cray/pe/mpich/*/ofi/nvidia/*' -xf - --strip-components=9 " \;
-	#tree -d unpack/mpich/mpich-nvhpc >>log
+		-exec sh -c "rpm2cpio {} | cpio -idmv -D ${tmpdir}" \;
+  # find include, bin, lib directory in tmpdir
+  find ${tmpdir} -name include -type d -exec cp -a {} ${_dst} \;
+  find ${tmpdir} -name bin -type d -exec cp -a {} ${_dst} \;
+  find ${tmpdir} -name lib -type d -exec cp -a {} ${_dst} \;
+
+  rm -r ${tmpdir}
+
 	(
 		cd ${_dst}/bin || exit 1
 		for i in mpicc mpicxx mpifort; do
