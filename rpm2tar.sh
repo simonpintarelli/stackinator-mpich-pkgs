@@ -81,7 +81,6 @@ rpm2tar_pals() {
 	version=$(grep pals ${version_table} | head -n1 | cut -f2 -d ' ')
 	#tree unpack/pals >>log
 	if [[ $separate_packages -eq 1 ]]; then
-		echo "NOEP!" && exit 1
 		tar czf "${dstdir}/cray-pals-${version}.tar.gz" "${tar_args[@]}" --exclude=*.a --exclude=*/pkgconfig/* ${_dst}
 	fi
 }
