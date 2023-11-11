@@ -169,7 +169,7 @@ repack_mpich-gcc() {
 				-e 's#^includedir=.*#includedir=$prefix/include#' \
 				-e 's#^modincdir=.*#modincdir=$prefix/include#' \
 				-e 's#^libdir=.*#libdir=$prefix/lib#' $i
-			sed -i '/^[[:space:]]*\$Show /s/-lmpi_gnu_91 /-lmpi_gnu_91 @@GTL_LIBRARY@@ /' $i
+			sed -i '/^[[:space:]]*\$Show /s/-lmpi_gnu_\([0-9]\+\) /-lmpi_gnu_\1 @@GTL_LIBRARY@@ /' $i
 		done
 		sed -i 's/^CXX.*/CXX="@@CXX@@"/' mpicxx
 		sed -i 's/^CC.*/CC="@@CC@@"/' mpicc
