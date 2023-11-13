@@ -171,9 +171,9 @@ repack_mpich-gcc() {
 				-e 's#^libdir=.*#libdir=$prefix/lib#' $i
 			sed -i '/^[[:space:]]*\$Show /s/-lmpi_gnu_\([0-9]\+\) /-lmpi_gnu_\1 @@GTL_LIBRARY@@ /' $i
 		done
-		sed -i 's/^CXX.*/CXX="@@CXX@@"/' mpicxx
-		sed -i 's/^CC.*/CC="@@CC@@"/' mpicc
-		sed -i 's/^FC.*/FC="@@FC@@"/' mpicc
+		sed -i 's/^CXX=.*/CXX="@@CXX@@"/' mpicxx
+		sed -i 's/^CC=.*/CC="@@CC@@"/' mpicc
+		sed -i 's/^FC=.*/FC="@@FC@@"/' mpifort
 	)
 
 }
@@ -205,9 +205,9 @@ repack_mpich-nvhpc() {
 				-e 's#^libdir=.*#libdir=$prefix/lib#' $i
 			sed -i '/^[[:space:]]*\$Show /s/-lmpi_nvidia /-lmpi_nvidia @@GTL_LIBRARY@@ /' $i
 		done
-		sed -i 's/^CXX.*/CXX="@@CXX@@"/' mpicxx
-		sed -i 's/^CC.*/CC="@@CC@@"/' mpicc
-		sed -i 's/^FC.*/FC="@@FC@@"/' mpicc
+		sed -i 's/^CXX=.*/CXX="@@CXX@@"/' mpicxx
+		sed -i 's/^CC=.*/CC="@@CC@@"/' mpicc
+		sed -i 's/^FC=.*/FC="@@FC@@"/' mpifort
 	)
 }
 
