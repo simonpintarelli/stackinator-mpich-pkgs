@@ -215,7 +215,7 @@ if [[ $separate_packages -eq 1 ]]; then
 	# create separate tarballs for pals, pmi, gtl and cray-mpich
 	mkdir -p unpack
 	(
-		cd unpack exit 1
+		cd unpack || exit 1
 		rpm2tar_pals pals
 		rpm2tar_pmi pmi
 		rpm2tar_gtl gtl
