@@ -5,17 +5,20 @@ set -eux -o pipefail
 # Default value for proxy
 proxy=""
 dest="output"
-separate_packages=1
+flags=""
 
-usage="Usage: $0 [-p proxy] [-o workdir] [-i] repo"
+usage="Usage: $0 [-p proxy] [-o workdir] [-i] [-x] repo"
 # Parse command-line options
-while getopts "p: o: i" opt; do
+while getopts "p: o: i x" opt; do
 	  case "$opt" in
 	      p)
 		        proxy="--socks5-hostname $OPTARG"
 		        ;;
         i)
-		        separate_packages=0
+		        flags="$flags -i"
+		        ;;
+        x)
+            flags="$flags -x"
 		        ;;
 	      o)
 		        dest="$OPTARG"
@@ -57,11 +60,7 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 		    curl -k $proxy -o ${rpmdir}/$name $url
 	  done <<<"$index"
 
-    if [[ $separate_packages -eq 1 ]]; then
-        ${SCRIPT_DIR}/rpm2tar.sh -t version.table -s ${rpmdir}
-    else
-        ${SCRIPT_DIR}/rpm2tar.sh -t version.table -s ${rpmdir} -i
-  fi
+    ${SCRIPT_DIR}/rpm2tar.sh -t version.table -s ${rpmdir} ${flags}
 )
 
 sha256sum "${dest}"/archives/*tar.gz
