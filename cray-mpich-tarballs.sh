@@ -7,7 +7,20 @@ proxy=""
 dest="output"
 flags=""
 
-usage="Usage: $0 [-p proxy] [-o workdir] [-i] [-x] repo"
+usage=$(
+	  cat <<-END
+		Usage: $0 [-p <proxy>] [-o <workdir>] [-i] [-x] <repo-url>
+
+        <repo-url>
+
+		    -p <proxy>
+
+		    -i include all dependencies (gtl, pmi, pals) in mpich tarball
+
+		    -x combine nvhpc|gcc in single cray-mpich tarball
+	END
+     )
+
 # Parse command-line options
 while getopts "p: o: i x" opt; do
 	  case "$opt" in

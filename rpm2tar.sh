@@ -8,6 +8,7 @@ combine_gcc_nvhpc=0
 usage=$(
 	cat <<-END
 		Usage: $0 [-s <srcdir> -t <package list file> [-i] [-x]]
+
 		    -s <srcdir>
 		      the directory containing the rpms
 
