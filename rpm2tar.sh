@@ -70,6 +70,10 @@ dstdir=$(realpath ./archives)
 # make sure sha256 don't change
 tar_args=(--sort=name --owner=0 --group=0 --numeric-owner --mode=go="rX,u+rw,a-s" --mtime="1970-01-01 01:01:01")
 
+get_arch() {
+    find ${rpmdir} -name "*pmi*.rpm" -print | tail -n1  | xargs rpm -qi | grep 'Architecture' | awk '//{print $2}'
+}
+
 rpm2tar_pals() {
 	## ----
 	## PALS
@@ -91,8 +95,9 @@ rpm2tar_pals() {
 
 	#tree unpack/pals >>log
 	if [[ $separate_packages -eq 1 ]]; then
+      arch=$(get_arch)
 	    version=$(grep pals ${version_table} | head -n1 | cut -f2 -d ' ')
-		  tar czf "${dstdir}/cray-pals-${version}.tar.gz" "${tar_args[@]}" --exclude=*.a --exclude=*/pkgconfig/* ${_dst}
+		  tar czf "${dstdir}/cray-pals-${version}.${arch}.tar.gz" "${tar_args[@]}" --exclude=*.a --exclude=*/pkgconfig/* ${_dst}
 	fi
 }
 
@@ -115,8 +120,9 @@ rpm2tar_pmi() {
 
 	#tree unpack/pmi >>log
 	if [[ $separate_packages -eq 1 ]]; then
+      arch=$(get_arch)
 	    version=$(grep cray-pmi ${version_table} | head -n1 | cut -f2 -d ' ')
-		  tar czf "${dstdir}/cray-pmi-${version}.tar.gz" "${tar_args[@]}" --exclude=*.a --exclude=*/pkgconfig/* ${_dst}
+		  tar czf "${dstdir}/cray-pmi-${version}.${arch}.tar.gz" "${tar_args[@]}" --exclude=*.a --exclude=*/pkgconfig/* ${_dst}
 	fi
 }
 
@@ -136,10 +142,10 @@ rpm2tar_gtl() {
   find ${tmpdir} -name lib -type d -exec cp -a {} ${_dst} \;
 
   rm -r ${tmpdir}
-
 	if [[ $separate_packages -eq 1 ]]; then
+      arch=$(get_arch)
 	    version=$(grep gtl ${version_table} | head -n1 | cut -f2 -d ' ')
-		  tar czf "${dstdir}/cray-gtl-${version}.tar.gz" "${tar_args[@]}" --exclude=*.a ${_dst}
+		  tar czf "${dstdir}/cray-gtl-${version}.${arch}.tar.gz" "${tar_args[@]}" --exclude=*.a ${_dst}
 	fi
 }
 
