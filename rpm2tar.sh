@@ -176,7 +176,7 @@ repack_mpich-gcc() {
 				-e 's#^includedir=.*#includedir=$prefix/include#' \
 				-e 's#^modincdir=.*#modincdir=$prefix/include#' \
 				-e 's#^libdir=.*#libdir=$prefix/lib#' $i
-			sed -i '/^[[:space:]]*\$Show /s/-lmpi_gnu_\([0-9]\+\) /-Wl,-rpath,\$libdir -lmpi_gnu_\1 @@GTL_LIBRARY@@ /' $i
+			sed -i '/^[[:space:]]*\$Show /s/-lmpi_gnu_\([0-9]\+\) /-Wl,--disable-new-dtags -Wl,-rpath,\$libdir -lmpi_gnu_\1 @@GTL_LIBRARY@@ /' $i
 		done
 		sed -i 's/^CXX=.*/CXX="@@CXX@@"/' mpicxx
 		sed -i 's/^CC=.*/CC="@@CC@@"/' mpicc
@@ -210,7 +210,7 @@ repack_mpich-nvhpc() {
 				-e 's#^includedir=.*#includedir=$prefix/include#' \
 				-e 's#^modincdir=.*#modincdir=$prefix/include#' \
 				-e 's#^libdir=.*#libdir=$prefix/lib#' $i
-			sed -i '/^[[:space:]]*\$Show /s/-lmpi_nvidia /-Wl,-rpath,\$libdir -lmpi_nvidia @@GTL_LIBRARY@@ /' $i
+			sed -i '/^[[:space:]]*\$Show /s/-lmpi_nvidia /-Wl,--disable-new-dtags -Wl,-rpath,\$libdir -lmpi_nvidia @@GTL_LIBRARY@@ /' $i
 		done
 		sed -i 's/^CXX=.*/CXX="@@CXX@@"/' mpicxx
 		sed -i 's/^CC=.*/CC="@@CC@@"/' mpicc
