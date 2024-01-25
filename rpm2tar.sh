@@ -226,8 +226,8 @@ if [[ $separate_packages -eq 1 ]]; then
 		rpm2tar_pals pals
 		rpm2tar_pmi pmi
 		rpm2tar_gtl gtl
-		repack_mpich-gcc mpich/mpich-gcc
-		repack_mpich-nvhpc mpich/mpich-nvhpc
+		repack_mpich-gcc mpich-gcc
+		repack_mpich-nvhpc mpich-nvhpc
 
 	)
 else
@@ -235,13 +235,13 @@ else
 	mkdir -p unpack
 	(
 		cd unpack || exit 1
-		_dst=mpich/mpich-gcc
+		_dst=mpich-gcc
 		rpm2tar_pals ${_dst}
 		rpm2tar_pmi ${_dst}
 		rpm2tar_gtl ${_dst}
 		repack_mpich-gcc ${_dst}
 
-		_dst=mpich/mpich-nvhpc
+		_dst=mpich-nvhpc
 		rpm2tar_pals ${_dst}
 		rpm2tar_pmi ${_dst}
 		rpm2tar_gtl ${_dst}
@@ -249,18 +249,20 @@ else
 	)
 fi
 
+arch=$(get_arch)
+
 ## tar mpich-gcc and mpich-nvhpc
 version=$(grep mpich ${version_table} | grep gnu | cut -f2 -d ' ')
 if [[ $combine_gcc_nvhpc -eq 1 ]]; then
 	(
 		cd unpack || exit 1
-		tar czf "${dstdir}/cray-mpich-${version}.tar.gz" "${tar_args[@]}" --exclude=*.a --exclude=*/pkgconfig/* --exclude=lib-abi-mpich mpich
+		tar czf "${dstdir}/cray-mpich-${version}.${arch}.tar.gz" "${tar_args[@]}" --exclude=*.a --exclude=*/pkgconfig/* --exclude=lib-abi-mpich mpich-gcc mpich-nvhpc
 	)
 else
 	(
-		cd unpack/mpich || exit 1
-    tar czf "${dstdir}/cray-mpich-${version}-gcc.tar.gz" "${tar_args[@]}" --exclude=*.a --exclude=*/pkgconfig/* --exclude=lib-abi-mpich/ mpich-gcc
-		tar czf "${dstdir}/cray-mpich-${version}-nvhpc.tar.gz" "${tar_args[@]}" --exclude=*.a --exclude=*/pkgconfig/* --exclude=lib-abi-mpich mpich-nvhpc
+		cd unpack/ || exit 1
+    tar czf "${dstdir}/cray-mpich-${version}-gcc.${arch}.tar.gz" "${tar_args[@]}" --exclude=*.a --exclude=*/pkgconfig/* --exclude=lib-abi-mpich/ mpich-gcc
+		tar czf "${dstdir}/cray-mpich-${version}-nvhpc.${arch}.tar.gz" "${tar_args[@]}" --exclude=*.a --exclude=*/pkgconfig/* --exclude=lib-abi-mpich mpich-nvhpc
 	)
 fi
 
