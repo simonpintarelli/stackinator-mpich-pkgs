@@ -258,9 +258,10 @@ repack_mpich-nvhpc() {
 	)
 }
 
+rm -rf unpack && mkdir -p unpack
+
 if [[ $separate_packages -eq 1 ]]; then
 	# create separate tarballs for pals, pmi, gtl and cray-mpich
-	mkdir -p unpack
 	(
 		cd unpack || exit 1
 		rpm2tar_pals pals
@@ -272,7 +273,6 @@ if [[ $separate_packages -eq 1 ]]; then
 	)
 else
 	# include all dependencies in cray-mpich tarball
-	mkdir -p unpack
 	(
 		cd unpack || exit 1
 		_dst=mpich-gcc
@@ -300,7 +300,7 @@ if [[ $combine_gcc_nvhpc -eq 1 ]]; then
 	)
 else
 	(
-		cd unpack/ || exit 1
+		cd unpack || exit 1
 		tar czf "${dstdir}/cray-mpich-${version}-gcc.${arch}.tar.gz" "${tar_args[@]}" --exclude=*.a --exclude=*/pkgconfig/* --exclude=lib-abi-mpich/ mpich-gcc
 		tar czf "${dstdir}/cray-mpich-${version}-nvhpc.${arch}.tar.gz" "${tar_args[@]}" --exclude=*.a --exclude=*/pkgconfig/* --exclude=lib-abi-mpich mpich-nvhpc
 	)
