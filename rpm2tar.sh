@@ -167,6 +167,12 @@ repack_mpich-gcc() {
 	find ${rpmdir} -name "*mpich*doc*" \
 		-exec sh -c "rpm2cpio {} | cpio -idmv -D ${tmpdir}" \;
 
+	# find include, bin, lib directory in tmpdir
+	find ${tmpdir} -name include -type d -exec cp -a {} ${_dst} \;
+	find ${tmpdir} -name bin -type d -exec cp -a {} ${_dst} \;
+	find ${tmpdir} -name lib -type d -exec cp -a {} ${_dst} \;
+  # copy man pages
+  # cray-mpich-<ver>-doc*rpm has the following directory structure
   #   opt
   #   └── cray
   #       └── pe
@@ -181,13 +187,6 @@ repack_mpich-gcc() {
   #                    └── ucx
   #                        └── man
   #                            └── man3
-
-
-	# find include, bin, lib directory in tmpdir
-	find ${tmpdir} -name include -type d -exec cp -a {} ${_dst} \;
-	find ${tmpdir} -name bin -type d -exec cp -a {} ${_dst} \;
-	find ${tmpdir} -name lib -type d -exec cp -a {} ${_dst} \;
-  # copy man pages
   mkdir -p ${_dst}/man
 	find ${tmpdir} -path '*/man/mpich/*' -name man3 -type d -exec cp -a {} ${_dst}/man \;
   mkdir -p ${_dst}/man/ofi/
