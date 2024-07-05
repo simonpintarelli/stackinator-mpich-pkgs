@@ -75,6 +75,13 @@ get_arch() {
 	find ${rpmdir} -name "*pmi*.rpm" -print | tail -n1 | xargs rpm -qi | grep 'Architecture' | awk '//{print $2}'
 }
 
+pkgconfig_prefix_template() {
+    find $1 -name '*.pc' -exec sed -i -e 's#^prefix=.*#prefix=@@PREFIX@@#' \
+         -e 's#^includedir=.*#includedir=${prefix}/include#' \
+         -e 's#^libdir=.*#libdir=${prefix}/lib#' \
+         {} \;
+}
+
 rpm2tar_pals() {
 	## ----
 	## PALS
@@ -92,31 +99,35 @@ rpm2tar_pals() {
 	find ${tmpdir} -name bin -type d -exec cp -a {} ${_dst} \;
 	find ${tmpdir} -name lib -type d -exec cp -a {} ${_dst} \;
 
+  pkgconfig_prefix_template ${_dst}
+
 	[[ $_keep_tmp == 1 ]] || rm -r ${tmpdir}
 
 	#tree unpack/pals >>log
 	if [[ $separate_packages -eq 1 ]]; then
 		arch=$(get_arch)
 		version=$(grep pals ${version_table} | head -n1 | cut -f2 -d ' ')
-		tar czf "${dstdir}/cray-pals-${version}.${arch}.tar.gz" "${tar_args[@]}" --exclude=*.a --exclude=*/pkgconfig/* ${_dst}
+		tar czf "${dstdir}/cray-pals-${version}.${arch}.tar.gz" "${tar_args[@]}" --exclude=*.a ${_dst}
 	fi
 }
 
 rpm2tar_pmi() {
-	## ---
-	## PMI
-	## ---
-	echo "Processing cray-pmi"
-	_dst=$1
-	mkdir -p ${_dst}
-	tmpdir=$(mktemp -d)
-	find ${rpmdir} -name "*pmi*.rpm" \
-		-exec sh -c "rpm2cpio {} | cpio -idmv -D ${tmpdir}" \;
-	# find include, bin, lib directory in tmpdir
-	find ${tmpdir} -name include -type d -exec cp -a {} ${_dst} \;
-	find ${tmpdir} -name bin -type d -exec cp -a {} ${_dst} \;
-	find ${tmpdir} -name lib -type d -exec cp -a {} ${_dst} \;
-	find ${tmpdir} -name man -type d -exec cp -a {} ${_dst} \;
+	  ## ---
+	  ## PMI
+	  ## ---
+	  echo "Processing cray-pmi"
+	  _dst=$1
+	  mkdir -p ${_dst}
+	  tmpdir=$(mktemp -d)
+	  find ${rpmdir} -name "*pmi*.rpm" \
+		     -exec sh -c "rpm2cpio {} | cpio -idmv -D ${tmpdir}" \;
+	  # find include, bin, lib directory in tmpdir
+	  find ${tmpdir} -name include -type d -exec cp -a {} ${_dst} \;
+	  find ${tmpdir} -name bin -type d -exec cp -a {} ${_dst} \;
+	  find ${tmpdir} -name lib -type d -exec cp -a {} ${_dst} \;
+	  find ${tmpdir} -name man -type d -exec cp -a {} ${_dst} \;
+
+    pkgconfig_prefix_template ${_dst}
 
 	[[ $_keep_tmp == 1 ]] || rm -r ${tmpdir}
 
@@ -124,25 +135,27 @@ rpm2tar_pmi() {
 	if [[ $separate_packages -eq 1 ]]; then
 		arch=$(get_arch)
 		version=$(grep cray-pmi ${version_table} | head -n1 | cut -f2 -d ' ')
-		tar czf "${dstdir}/cray-pmi-${version}.${arch}.tar.gz" "${tar_args[@]}" --exclude=*.a --exclude=*/pkgconfig/* ${_dst}
+		tar czf "${dstdir}/cray-pmi-${version}.${arch}.tar.gz" "${tar_args[@]}" --exclude=*.a ${_dst}
 	fi
 }
 
 rpm2tar_gtl() {
-	## ---
-	## GTL
-	## ---
-	echo "Processing cray-gtl"
-	_dst=$1
-	mkdir -p ${_dst}
-	tmpdir=$(mktemp -d)
-	find ${rpmdir} -name "cray-mpich*gtl*" \
-		-exec sh -c "rpm2cpio {} | cpio -idmv -D ${tmpdir}" \;
+	  ## ---
+	  ## GTL
+	  ## ---
+	  echo "Processing cray-gtl"
+	  _dst=$1
+	  mkdir -p ${_dst}
+	  tmpdir=$(mktemp -d)
+	  find ${rpmdir} -name "cray-mpich*gtl*" \
+		     -exec sh -c "rpm2cpio {} | cpio -idmv -D ${tmpdir}" \;
 
-	# find include, bin, lib directory in tmpdir
-	find ${tmpdir} -name include -type d -exec cp -a {} ${_dst} \;
-	find ${tmpdir} -name bin -type d -exec cp -a {} ${_dst} \;
-	find ${tmpdir} -name lib -type d -exec cp -a {} ${_dst} \;
+	  # find include, bin, lib directory in tmpdir
+	  find ${tmpdir} -name include -type d -exec cp -a {} ${_dst} \;
+	  find ${tmpdir} -name bin -type d -exec cp -a {} ${_dst} \;
+	  find ${tmpdir} -name lib -type d -exec cp -a {} ${_dst} \;
+
+    pkgconfig_prefix_template ${_dst}
 
 	[[ $_keep_tmp == 1 ]] || rm -r ${tmpdir}
 
@@ -171,6 +184,7 @@ repack_mpich-gcc() {
 	find ${tmpdir} -name include -type d -exec cp -a {} ${_dst} \;
 	find ${tmpdir} -name bin -type d -exec cp -a {} ${_dst} \;
 	find ${tmpdir} -name lib -type d -exec cp -a {} ${_dst} \;
+
   # copy man pages
   # cray-mpich-<ver>-doc*rpm has the following directory structure
   #   opt
@@ -189,10 +203,11 @@ repack_mpich-gcc() {
   #                            └── man3
   mkdir -p ${_dst}/man
 	find ${tmpdir} -path '*/man/mpich/*' -name man3 -type d -exec cp -a {} ${_dst}/man \;
-  mkdir -p ${_dst}/man/ofi/
-	find ${tmpdir} -path '*/ofi/man/*' -name man3 -type d -exec cp -a {} ${_dst}/man/ofi \;
-  mkdir -p ${_dst}/man/ucx
-	find ${tmpdir} -path '*/ucx/man/*' -name man3 -type d -exec cp -a {} ${_dst}/man/ucx \;
+	find ${tmpdir} -path '*/ofi/man/*' -name man3 -type d -exec cp -a {} ${_dst}/man \;
+  # mkdir -p ${_dst}/man/ucx
+	# find ${tmpdir} -path '*/ucx/man/*' -name man3 -type d -exec cp -a {} ${_dst}/man/ucx \;
+
+  pkgconfig_prefix_template ${_dst}
 
 	[[ $_keep_tmp == 1 ]] || rm -r ${tmpdir}
 
@@ -232,11 +247,7 @@ repack_mpich-nvhpc() {
   # copy man pages
   mkdir -p ${_dst}/man
 	find ${tmpdir} -path '*/man/mpich/*' -name man3 -type d -exec cp -a {} ${_dst}/man \;
-  mkdir -p ${_dst}/man/ofi/
-	find ${tmpdir} -path '*/ofi/man/*' -name man3 -type d -exec cp -a {} ${_dst}/man/ofi \;
-  mkdir -p ${_dst}/man/ucx
-	find ${tmpdir} -path '*/ucx/man/*' -name man3 -type d -exec cp -a {} ${_dst}/man/ucx \;
-
+	find ${tmpdir} -path '*/ofi/man/*' -name man3 -type d -exec cp -a {} ${_dst}/man \;
 
 	[[ $_keep_tmp == 1 ]] || rm -r ${tmpdir}
 
@@ -295,13 +306,13 @@ version=$(grep mpich ${version_table} | grep gnu | cut -f2 -d ' ')
 if [[ $combine_gcc_nvhpc -eq 1 ]]; then
 	(
 		cd unpack || exit 1
-		tar czf "${dstdir}/cray-mpich-${version}.${arch}.tar.gz" "${tar_args[@]}" --exclude=*.a --exclude=*/pkgconfig/* --exclude=lib-abi-mpich mpich-gcc mpich-nvhpc
+		tar czf "${dstdir}/cray-mpich-${version}.${arch}.tar.gz" "${tar_args[@]}" --exclude=*.a --exclude=lib-abi-mpich mpich-gcc mpich-nvhpc
 	)
 else
 	(
 		cd unpack || exit 1
-		tar czf "${dstdir}/cray-mpich-${version}-gcc.${arch}.tar.gz" "${tar_args[@]}" --exclude=*.a --exclude=*/pkgconfig/* --exclude=lib-abi-mpich/ mpich-gcc
-		tar czf "${dstdir}/cray-mpich-${version}-nvhpc.${arch}.tar.gz" "${tar_args[@]}" --exclude=*.a --exclude=*/pkgconfig/* --exclude=lib-abi-mpich mpich-nvhpc
+		tar czf "${dstdir}/cray-mpich-${version}-gcc.${arch}.tar.gz" "${tar_args[@]}" --exclude=*.a --exclude=lib-abi-mpich/ mpich-gcc
+		tar czf "${dstdir}/cray-mpich-${version}-nvhpc.${arch}.tar.gz" "${tar_args[@]}" --exclude=*.a --exclude=lib-abi-mpich mpich-nvhpc
 	)
 fi
 
