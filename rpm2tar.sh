@@ -10,6 +10,8 @@ usage=$(
 	cat <<-END
 		Usage: $0 [-s <srcdir> -t <package list file> [-i] [-x]]
 
+        ../rpm2tar.sh -s rpm -t version.table -x 2>&1
+
 		    -s <srcdir>
 		      the directory containing the rpms
 
@@ -29,6 +31,7 @@ usage=$(
 		      - cray-mpi
 		      - cray-mpi-devel
 		      - cray-pals
+          - cray-pmi
 	END
 )
 
@@ -72,7 +75,7 @@ dstdir=$(realpath ./archives)
 tar_args=(--sort=name --owner=0 --group=0 --numeric-owner --mode=go="rX,u+rw,a-s" --mtime="1970-01-01 01:01:01")
 
 get_arch() {
-	find ${rpmdir} -name "*pmi*.rpm" -print | tail -n1 | xargs rpm -qi | grep 'Architecture' | awk '//{print $2}'
+	find ${rpmdir} -name "*pmi*.rpm" -print | tail -n1 | xargs rpm -qi | grep 'Architecture' | awk '//{print $2}' 2> /dev/null
 }
 
 pkgconfig_prefix_template() {
@@ -106,7 +109,8 @@ rpm2tar_pals() {
 	#tree unpack/pals >>log
 	if [[ $separate_packages -eq 1 ]]; then
 		arch=$(get_arch)
-		version=$(grep pals ${version_table} | head -n1 | cut -f2 -d ' ')
+		version=$(grep pals ${version_table} | head -n1 | cut -f2 -d ' ') \
+        || { echo "Error: pals entry in ${version_table} missing!" >&2; exit 1; }
 		tar czf "${dstdir}/cray-pals-${version}.${arch}.tar.gz" "${tar_args[@]}" --exclude=*.a ${_dst}
 	fi
 }
@@ -134,7 +138,8 @@ rpm2tar_pmi() {
 	#tree unpack/pmi >>log
 	if [[ $separate_packages -eq 1 ]]; then
 		arch=$(get_arch)
-		version=$(grep cray-pmi ${version_table} | head -n1 | cut -f2 -d ' ')
+		version=$(grep cray-pmi ${version_table} | head -n1 | cut -f2 -d ' ') \
+        || { echo "Error 'cray-pmi' entry in ${version_table} is missing!" >&2; exit 1; }
 		tar czf "${dstdir}/cray-pmi-${version}.${arch}.tar.gz" "${tar_args[@]}" --exclude=*.a ${_dst}
 	fi
 }
@@ -161,7 +166,8 @@ rpm2tar_gtl() {
 
 	if [[ $separate_packages -eq 1 ]]; then
 		arch=$(get_arch)
-		version=$(grep gtl ${version_table} | head -n1 | cut -f2 -d ' ')
+		version=$(grep gtl ${version_table} | head -n1 | cut -f2 -d ' ') || \
+        { echo "Error 'cray-gtl' entry in ${version_table} is missing!" >&2; exit 1; }
 		tar czf "${dstdir}/cray-gtl-${version}.${arch}.tar.gz" "${tar_args[@]}" --exclude=*.a ${_dst}
 	fi
 }
@@ -219,8 +225,77 @@ repack_mpich-gcc() {
 				-e 's#^sysconfdir=.*#sysconfdir=$prefix/etc#' \
 				-e 's#^includedir=.*#includedir=$prefix/include#' \
 				-e 's#^modincdir=.*#modincdir=$prefix/include#' \
-				-e 's#^libdir=.*#libdir=$prefix/lib#' $i
+				-e 's#^libdir=.*#libdir=$prefix/lib#' \
+        -e 's#^CRAY_PMI_LIBDIR=.*#CRAY_PMI_LIBDIR=@@PMI_LIB_PREFIX@@#' \
+        -e 's#^CRAY_LIBFABRIC_LIBDIR=.*#CRAY_LIBFABRIC_LIBDIR=@@LIBFABRIC_LIB_PREFIX@@#' \
+        $i
 			sed -i '/^[[:space:]]*\$Show /s/-lmpi_gnu_\([0-9]\+\) /-Wl,--disable-new-dtags -Wl,-rpath,\$libdir -lmpi_gnu_\1 @@GTL_LIBRARY@@ /' $i
+		done
+		sed -i 's/^CXX=.*/CXX="@@CXX@@"/' mpicxx
+		sed -i 's/^CC=.*/CC="@@CC@@"/' mpicc
+		sed -i 's/^FC=.*/FC="@@FC@@"/' mpifort
+	)
+
+}
+
+repack_mpich-intel() {
+	## ---------
+	## MPICH-INTEL
+	## ---------
+	echo "Processing cray-mpich (intel)"
+	## MPICH-intel
+	_dst=$1
+	mkdir -p ${_dst}
+	tmpdir=$(mktemp -d)
+	find ${rpmdir} -name "*mpich*intel*" \
+		-exec sh -c "rpm2cpio {} | cpio -idmv -D ${tmpdir}" \;
+	find ${rpmdir} -name "*mpich*doc*" \
+		-exec sh -c "rpm2cpio {} | cpio -idmv -D ${tmpdir}" \;
+
+	# find include, bin, lib directory in tmpdir
+	find ${tmpdir} -name include -type d -exec cp -a {} ${_dst} \;
+	find ${tmpdir} -name bin -type d -exec cp -a {} ${_dst} \;
+	find ${tmpdir} -name lib -type d -exec cp -a {} ${_dst} \;
+
+  # copy man pages
+  # cray-mpich-<ver>-doc*rpm has the following directory structure
+  #   opt
+  #   └── cray
+  #       └── pe
+  #           └── mpich
+  #               └── 8.1.28
+  #                   ├── man
+  #                   │   └── mpich
+  #                   │       └── man3
+  #                   ├── ofi
+  #                    │   └── man
+  #                    │       └── man3
+  #                    └── ucx
+  #                        └── man
+  #                            └── man3
+  mkdir -p ${_dst}/man
+	find ${tmpdir} -path '*/man/mpich/*' -name man3 -type d -exec cp -a {} ${_dst}/man \;
+	find ${tmpdir} -path '*/ofi/man/*' -name man3 -type d -exec cp -a {} ${_dst}/man \;
+  # mkdir -p ${_dst}/man/ucx
+	# find ${tmpdir} -path '*/ucx/man/*' -name man3 -type d -exec cp -a {} ${_dst}/man/ucx \;
+
+  pkgconfig_prefix_template ${_dst}
+
+	[[ $_keep_tmp == 1 ]] || rm -r ${tmpdir}
+
+	(
+		cd ${_dst}/bin || exit 1
+		for i in mpicc mpicxx mpifort; do
+			sed -i -e 's#^prefix=.*#prefix="@@PREFIX@@"#' \
+				-e 's#^exec_prefix=.*#exec_prefix=$prefix#' \
+				-e 's#^sysconfdir=.*#sysconfdir=$prefix/etc#' \
+				-e 's#^includedir=.*#includedir=$prefix/include#' \
+				-e 's#^modincdir=.*#modincdir=$prefix/include#' \
+				-e 's#^libdir=.*#libdir=$prefix/lib#' \
+        -e 's#^CRAY_PMI_LIBDIR=.*#CRAY_PMI_LIBDIR=@@PMI_LIB_PREFIX@@#' \
+        -e 's#^CRAY_LIBFABRIC_LIBDIR=.*#CRAY_LIBFABRIC_LIBDIR=@@LIBFABRIC_LIB_PREFIX@@#' \
+        $i
+			sed -i '/^[[:space:]]*\$Show /s/-lmpi_intel /-Wl,--disable-new-dtags -Wl,-rpath,\$libdir -lmpi_intel @@GTL_LIBRARY@@ /' $i
 		done
 		sed -i 's/^CXX=.*/CXX="@@CXX@@"/' mpicxx
 		sed -i 's/^CC=.*/CC="@@CC@@"/' mpicc
@@ -259,7 +334,10 @@ repack_mpich-nvhpc() {
 				-e 's#^sysconfdir=.*#sysconfdir=$prefix/etc#' \
 				-e 's#^includedir=.*#includedir=$prefix/include#' \
 				-e 's#^modincdir=.*#modincdir=$prefix/include#' \
-				-e 's#^libdir=.*#libdir=$prefix/lib#' $i
+				-e 's#^libdir=.*#libdir=$prefix/lib#' \
+        -e 's#^CRAY_PMI_LIBDIR=.*#CRAY_PMI_LIBDIR=@@PMI_LIB_PREFIX@@#' \
+        -e 's#^CRAY_LIBFABRIC_LIBDIR=.*#CRAY_LIBFABRIC_LIBDIR=@@LIBFABRIC_LIB_PREFIX@@#' \
+        $i
 			sed -i '/^[[:space:]]*\$Show /s/-lmpi_nvidia /-Wl,--disable-new-dtags -Wl,-rpath,\$libdir -lmpi_nvidia @@GTL_LIBRARY@@ /' $i
 		done
 		sed -i 's/^CXX=.*/CXX="@@CXX@@"/' mpicxx
@@ -279,6 +357,7 @@ if [[ $separate_packages -eq 1 ]]; then
 		rpm2tar_gtl gtl
 		repack_mpich-gcc mpich-gcc
 		repack_mpich-nvhpc mpich-nvhpc
+		# repack_mpich-intel mpich-intel
 
 	)
 else
@@ -296,23 +375,35 @@ else
 		rpm2tar_pmi ${_dst}
 		rpm2tar_gtl ${_dst}
 		repack_mpich-nvhpc ${_dst}
+
+		# _dst=mpich-intel
+		# rpm2tar_pals ${_dst}
+		# rpm2tar_pmi ${_dst}
+		# rpm2tar_gtl ${_dst}
+		# repack_mpich-intel ${_dst}
 	)
 fi
 
 arch=$(get_arch)
 
 ## tar mpich-gcc and mpich-nvhpc
-version=$(grep mpich ${version_table} | grep gnu | cut -f2 -d ' ')
+version=$(grep mpich ${version_table} | grep gnu | tail -n1 | cut -f2 -d ' ') || \
+    { echo "Error 'cray-mpich' entry in ${version_table} is missing!" >&2; exit 1; }
+
 if [[ $combine_gcc_nvhpc -eq 1 ]]; then
-	(
-		cd unpack || exit 1
-		tar czf "${dstdir}/cray-mpich-${version}.${arch}.tar.gz" "${tar_args[@]}" --exclude=*.a --exclude=lib-abi-mpich mpich-gcc mpich-nvhpc
-	)
+	  (
+		    cd unpack || exit 1
+        find ./ -xtype l -delete
+		    # tar czf "${dstdir}/cray-mpich-${version}.${arch}.tar.gz" "${tar_args[@]}" --exclude=*.a --exclude=lib-abi-mpich mpich-gcc mpich-nvhpc mpich-intel
+		    tar czf "${dstdir}/cray-mpich-${version}.${arch}.tar.gz" "${tar_args[@]}" --exclude=*.a --exclude=lib-abi-mpich mpich-gcc mpich-nvhpc
+	  )
 else
-	(
-		cd unpack || exit 1
-		tar czf "${dstdir}/cray-mpich-${version}-gcc.${arch}.tar.gz" "${tar_args[@]}" --exclude=*.a --exclude=lib-abi-mpich/ mpich-gcc
-		tar czf "${dstdir}/cray-mpich-${version}-nvhpc.${arch}.tar.gz" "${tar_args[@]}" --exclude=*.a --exclude=lib-abi-mpich mpich-nvhpc
+	  (
+		    cd unpack || exit 1
+        find ./ -xtype l -delete
+		    tar czf "${dstdir}/cray-mpich-${version}-gcc.${arch}.tar.gz" "${tar_args[@]}" --exclude=*.a --exclude=lib-abi-mpich/ mpich-gcc
+		    tar czf "${dstdir}/cray-mpich-${version}-nvhpc.${arch}.tar.gz" "${tar_args[@]}" --exclude=*.a --exclude=lib-abi-mpich mpich-nvhpc
+		    # tar czf "${dstdir}/cray-mpich-${version}-intel.${arch}.tar.gz" "${tar_args[@]}" --exclude=*.a --exclude=lib-abi-mpich mpich-intel
 	)
 fi
 
