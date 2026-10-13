@@ -89,7 +89,7 @@ dstdir=$(realpath ./archives)
 tar_args=(--sort=name --owner=0 --group=0 --numeric-owner --mode=go="rX,u+rw,a-s" --mtime="1970-01-01 01:01:01")
 
 get_arch() {
-	find ${rpmdir} -name "*pmi*.rpm" -print | tail -n1 | xargs rpm -qi | grep 'Architecture' | awk '//{print $2}' 2> /dev/null
+	find ${rpmdir} -maxdepth 1 -name "*pmi*.rpm" -print | tail -n1 | xargs rpm -qi | grep 'Architecture' | awk '//{print $2}' 2> /dev/null
 }
 
 pkgconfig_prefix_template() {
@@ -98,6 +98,27 @@ pkgconfig_prefix_template() {
          -e 's#^includedir=.*#includedir=${prefix}/include#' \
          -e 's#^libdir=.*#libdir=${prefix}/lib#' \
          {} \;
+}
+
+# $1: install dir, $2: sed BRE matching the libmpi name (without -l)
+patch_mpi_wrappers() {
+	(
+		cd "$1/bin" || exit 1
+		# shellcheck disable=SC2016
+		for i in mpicc mpicxx mpifort; do
+			sed -i -e 's#^prefix=.*#prefix="@@PREFIX@@"#' \
+				-e 's#^exec_prefix=.*#exec_prefix=$prefix#' \
+				-e 's#^sysconfdir=.*#sysconfdir=$prefix/etc#' \
+				-e 's#^includedir=.*#includedir=$prefix/include#' \
+				-e 's#^modincdir=.*#modincdir=$prefix/include#' \
+				-e 's#^libdir=.*#libdir=$prefix/lib#' \
+				$i
+			sed -i '/^[[:space:]]*\$Show /s/-l\('"$2"'\) /-Wl,--disable-new-dtags -Wl,-rpath,\$libdir -l\1 @@GTL_LIBRARY@@ /' $i
+		done
+		sed -i 's/^CXX=.*/CXX="@@CXX@@"/' mpicxx
+		sed -i 's/^CC=.*/CC="@@CC@@"/' mpicc
+		sed -i 's/^FC=.*/FC="@@FC@@"/' mpifort
+	)
 }
 
 rpm2tar_pals() {
@@ -110,7 +131,7 @@ rpm2tar_pals() {
 
 	# extract rpm to tmpdir
 	tmpdir=$(mktemp -d)
-	find ${rpmdir} -name "*pals*.rpm" \
+	find ${rpmdir} -maxdepth 1 -name "*pals*.rpm" \
 		-exec sh -c "rpm2cpio $1 | cpio -idmv -D ${tmpdir}" shell {} \;
 	# find include, bin, lib directory in tmpdir
 	find ${tmpdir} -name include -type d -exec cp -a {} ${_dst} \;
@@ -140,7 +161,7 @@ rpm2tar_pmi() {
 	  _dst=$1
 	  mkdir -p ${_dst}
 	  tmpdir=$(mktemp -d)
-	  find ${rpmdir} -name "*pmi*.rpm" \
+	  find ${rpmdir} -maxdepth 1 -name "*pmi*.rpm" \
 		     -exec sh -c "rpm2cpio $1 | cpio -idmv -D ${tmpdir}" shell {} \;
 	  # find include, bin, lib directory in tmpdir
 	  find ${tmpdir} -name include -type d -exec cp -a {} ${_dst} \;
@@ -171,7 +192,7 @@ rpm2tar_gtl() {
 	  _dst=$1
 	  mkdir -p ${_dst}
 	  tmpdir=$(mktemp -d)
-	  find ${rpmdir} -name "cray-mpich*gtl*" \
+	  find ${rpmdir} -maxdepth 1 -name "cray-mpich*gtl*" \
 		     -exec sh -c "rpm2cpio $1 | cpio -idmv -D ${tmpdir}" shell {} \;
 
 	  # find include, bin, lib directory in tmpdir
@@ -202,9 +223,9 @@ repack_mpich-gcc() {
 	_dst=$1
 	mkdir -p ${_dst}
 	tmpdir=$(mktemp -d)
-	find ${rpmdir} -name "*mpich*gnu*" \
+	find ${rpmdir} -maxdepth 1 -name "*mpich*gnu*.rpm" \
 		-exec sh -c "rpm2cpio $1 | cpio -idmv -D ${tmpdir}" shell {} \;
-	find ${rpmdir} -name "*mpich*doc*" \
+	find ${rpmdir} -maxdepth 1 -name "*mpich*doc*.rpm" \
 		-exec sh -c "rpm2cpio $1 | cpio -idmv -D ${tmpdir}" shell {} \;
 
 	# find include, bin, lib directory in tmpdir
@@ -238,23 +259,7 @@ repack_mpich-gcc() {
 
 	[[ $_keep_tmp == 1 ]] || rm -r ${tmpdir}
 
-	(
-		cd ${_dst}/bin || exit 1
-    # shellcheck disable=SC2016
-		for i in mpicc mpicxx mpifort; do
-			sed -i -e 's#^prefix=.*#prefix="@@PREFIX@@"#' \
-				-e 's#^exec_prefix=.*#exec_prefix=$prefix#' \
-				-e 's#^sysconfdir=.*#sysconfdir=$prefix/etc#' \
-				-e 's#^includedir=.*#includedir=$prefix/include#' \
-				-e 's#^modincdir=.*#modincdir=$prefix/include#' \
-				-e 's#^libdir=.*#libdir=$prefix/lib#' \
-        $i
-			sed -i '/^[[:space:]]*\$Show /s/-lmpi_gnu_\([0-9]\+\) /-Wl,--disable-new-dtags -Wl,-rpath,\$libdir -lmpi_gnu_\1 @@GTL_LIBRARY@@ /' $i
-		done
-		sed -i 's/^CXX=.*/CXX="@@CXX@@"/' mpicxx
-		sed -i 's/^CC=.*/CC="@@CC@@"/' mpicc
-		sed -i 's/^FC=.*/FC="@@FC@@"/' mpifort
-	)
+	patch_mpi_wrappers ${_dst} 'mpi_gnu_[0-9]\+'
 
 }
 
@@ -267,9 +272,9 @@ repack_mpich-intel() {
 	_dst=$1
 	mkdir -p ${_dst}
 	tmpdir=$(mktemp -d)
-	find ${rpmdir} -name "*mpich*intel*" \
+	find ${rpmdir} -maxdepth 1 -name "*mpich*intel*.rpm" \
 		-exec sh -c "rpm2cpio $1 | cpio -idmv -D ${tmpdir}" shell {} \;
-	find ${rpmdir} -name "*mpich*doc*" \
+	find ${rpmdir} -maxdepth 1 -name "*mpich*doc*.rpm" \
 		-exec sh -c "rpm2cpio $1 | cpio -idmv -D ${tmpdir}" shell {} \;
 
 	# find include, bin, lib directory in tmpdir
@@ -303,23 +308,7 @@ repack_mpich-intel() {
 
 	[[ $_keep_tmp == 1 ]] || rm -r ${tmpdir}
 
-	(
-		cd ${_dst}/bin || exit 1
-    # shellcheck disable=SC2016
-		for i in mpicc mpicxx mpifort; do
-			sed -i -e 's#^prefix=.*#prefix="@@PREFIX@@"#' \
-				-e 's#^exec_prefix=.*#exec_prefix=$prefix#' \
-				-e 's#^sysconfdir=.*#sysconfdir=$prefix/etc#' \
-				-e 's#^includedir=.*#includedir=$prefix/include#' \
-				-e 's#^modincdir=.*#modincdir=$prefix/include#' \
-				-e 's#^libdir=.*#libdir=$prefix/lib#' \
-        $i
-			sed -i '/^[[:space:]]*\$Show /s/-lmpi_intel /-Wl,--disable-new-dtags -Wl,-rpath,\$libdir -lmpi_intel @@GTL_LIBRARY@@ /' $i
-		done
-		sed -i 's/^CXX=.*/CXX="@@CXX@@"/' mpicxx
-		sed -i 's/^CC=.*/CC="@@CC@@"/' mpicc
-		sed -i 's/^FC=.*/FC="@@FC@@"/' mpifort
-	)
+	patch_mpi_wrappers ${_dst} mpi_intel
 
 }
 
@@ -330,9 +319,9 @@ repack_mpich-nvhpc() {
 	_dst=$1
 	mkdir -p ${_dst}
 	tmpdir=$(mktemp -d)
-	find ${rpmdir} -name "*mpich*nvidia*" \
+	find ${rpmdir} -name "*mpich*nvidia*.rpm" \
 		-exec sh -c "rpm2cpio $1 | cpio -idmv -D ${tmpdir}" shell {} \;
-	find ${rpmdir} -name "*mpich*doc*" \
+	find ${rpmdir} -name "*mpich*doc*.rpm" \
 		-exec sh -c "rpm2cpio $1 | cpio -idmv -D ${tmpdir}" shell {} \;
 	# find include, bin, lib directory in tmpdir
 	find ${tmpdir} -name include -type d -exec cp -a {} ${_dst} \;
@@ -345,23 +334,7 @@ repack_mpich-nvhpc() {
 
 	[[ $_keep_tmp == 1 ]] || rm -r ${tmpdir}
 
-	(
-		cd ${_dst}/bin || exit 1
-    # shellcheck disable=SC2016
-		for i in mpicc mpicxx mpifort; do
-			sed -i -e 's#^prefix=.*#prefix="@@PREFIX@@"#' \
-				-e 's#^exec_prefix=.*#exec_prefix=$prefix#' \
-				-e 's#^sysconfdir=.*#sysconfdir=$prefix/etc#' \
-				-e 's#^includedir=.*#includedir=$prefix/include#' \
-				-e 's#^modincdir=.*#modincdir=$prefix/include#' \
-				-e 's#^libdir=.*#libdir=$prefix/lib#' \
-        $i
-			sed -i '/^[[:space:]]*\$Show /s/-lmpi_nvidia /-Wl,--disable-new-dtags -Wl,-rpath,\$libdir -lmpi_nvidia @@GTL_LIBRARY@@ /' $i
-		done
-		sed -i 's/^CXX=.*/CXX="@@CXX@@"/' mpicxx
-		sed -i 's/^CC=.*/CC="@@CC@@"/' mpicc
-		sed -i 's/^FC=.*/FC="@@FC@@"/' mpifort
-	)
+	patch_mpi_wrappers ${_dst} mpi_nvidia
 }
 
 rm -rf unpack && mkdir -p unpack
