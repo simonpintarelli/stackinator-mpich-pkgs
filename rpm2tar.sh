@@ -68,6 +68,20 @@ set -eux -o pipefail
 rpmdir=$(realpath "$rpmdir")
 version_table=$(realpath "$version_table")
 
+validate_version_table() {
+	local lineno=0 nf line
+	while IFS= read -r line; do
+		lineno=$((lineno + 1))
+		[[ -z "$line" ]] && continue
+		nf=$(awk '{print NF}' <<<"$line")
+		if [[ "$nf" -ne 2 ]]; then
+			echo "Error: ${version_table} line ${lineno} does not have exactly 2 fields (<fname.rpm> <version>): '${line}'" >&2
+			exit 1
+		fi
+	done <"${version_table}"
+}
+validate_version_table
+
 mkdir -p archives
 dstdir=$(realpath ./archives)
 
@@ -111,6 +125,8 @@ rpm2tar_pals() {
 		arch=$(get_arch)
 		version=$(grep pals ${version_table} | head -n1 | cut -f2 -d ' ') \
         || { echo "Error: pals entry in ${version_table} missing!" >&2; exit 1; }
+		[[ -n "$version" && "$version" != *.rpm* ]] \
+        || { echo "Error: invalid version '${version}' extracted from ${version_table}" >&2; exit 1; }
 		tar czf "${dstdir}/cray-pals-${version}.${arch}.tar.gz" "${tar_args[@]}" --exclude=*.a ${_dst}
 	fi
 }
@@ -140,6 +156,8 @@ rpm2tar_pmi() {
 		arch=$(get_arch)
 		version=$(grep cray-pmi ${version_table} | head -n1 | cut -f2 -d ' ') \
         || { echo "Error 'cray-pmi' entry in ${version_table} is missing!" >&2; exit 1; }
+		[[ -n "$version" && "$version" != *.rpm* ]] \
+        || { echo "Error: invalid version '${version}' extracted from ${version_table}" >&2; exit 1; }
 		tar czf "${dstdir}/cray-pmi-${version}.${arch}.tar.gz" "${tar_args[@]}" --exclude=*.a ${_dst}
 	fi
 }
@@ -168,6 +186,8 @@ rpm2tar_gtl() {
 		arch=$(get_arch)
 		version=$(grep gtl ${version_table} | head -n1 | cut -f2 -d ' ') || \
         { echo "Error 'cray-gtl' entry in ${version_table} is missing!" >&2; exit 1; }
+		[[ -n "$version" && "$version" != *.rpm* ]] \
+        || { echo "Error: invalid version '${version}' extracted from ${version_table}" >&2; exit 1; }
 		tar czf "${dstdir}/cray-gtl-${version}.${arch}.tar.gz" "${tar_args[@]}" --exclude=*.a ${_dst}
 	fi
 }
@@ -389,6 +409,8 @@ arch=$(get_arch)
 ## tar mpich-gcc and mpich-nvhpc
 version=$(grep mpich ${version_table} | grep gnu | tail -n1 | cut -f2 -d ' ') || \
     { echo "Error 'cray-mpich' entry in ${version_table} is missing!" >&2; exit 1; }
+[[ -n "$version" && "$version" != *.rpm* ]] \
+    || { echo "Error: invalid version '${version}' extracted from ${version_table}" >&2; exit 1; }
 
 if [[ $combine_gcc_nvhpc -eq 1 ]]; then
 	  (
