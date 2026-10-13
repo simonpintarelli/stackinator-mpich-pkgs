@@ -248,8 +248,6 @@ repack_mpich-gcc() {
 				-e 's#^includedir=.*#includedir=$prefix/include#' \
 				-e 's#^modincdir=.*#modincdir=$prefix/include#' \
 				-e 's#^libdir=.*#libdir=$prefix/lib#' \
-        -e 's#^CRAY_PMI_LIBDIR=.*#CRAY_PMI_LIBDIR=@@PMI_LIB_PREFIX@@#' \
-        -e 's#^CRAY_LIBFABRIC_LIBDIR=.*#CRAY_LIBFABRIC_LIBDIR=@@LIBFABRIC_LIB_PREFIX@@#' \
         $i
 			sed -i '/^[[:space:]]*\$Show /s/-lmpi_gnu_\([0-9]\+\) /-Wl,--disable-new-dtags -Wl,-rpath,\$libdir -lmpi_gnu_\1 @@GTL_LIBRARY@@ /' $i
 		done
@@ -315,8 +313,6 @@ repack_mpich-intel() {
 				-e 's#^includedir=.*#includedir=$prefix/include#' \
 				-e 's#^modincdir=.*#modincdir=$prefix/include#' \
 				-e 's#^libdir=.*#libdir=$prefix/lib#' \
-        -e 's#^CRAY_PMI_LIBDIR=.*#CRAY_PMI_LIBDIR=@@PMI_LIB_PREFIX@@#' \
-        -e 's#^CRAY_LIBFABRIC_LIBDIR=.*#CRAY_LIBFABRIC_LIBDIR=@@LIBFABRIC_LIB_PREFIX@@#' \
         $i
 			sed -i '/^[[:space:]]*\$Show /s/-lmpi_intel /-Wl,--disable-new-dtags -Wl,-rpath,\$libdir -lmpi_intel @@GTL_LIBRARY@@ /' $i
 		done
@@ -359,8 +355,6 @@ repack_mpich-nvhpc() {
 				-e 's#^includedir=.*#includedir=$prefix/include#' \
 				-e 's#^modincdir=.*#modincdir=$prefix/include#' \
 				-e 's#^libdir=.*#libdir=$prefix/lib#' \
-        -e 's#^CRAY_PMI_LIBDIR=.*#CRAY_PMI_LIBDIR=@@PMI_LIB_PREFIX@@#' \
-        -e 's#^CRAY_LIBFABRIC_LIBDIR=.*#CRAY_LIBFABRIC_LIBDIR=@@LIBFABRIC_LIB_PREFIX@@#' \
         $i
 			sed -i '/^[[:space:]]*\$Show /s/-lmpi_nvidia /-Wl,--disable-new-dtags -Wl,-rpath,\$libdir -lmpi_nvidia @@GTL_LIBRARY@@ /' $i
 		done
