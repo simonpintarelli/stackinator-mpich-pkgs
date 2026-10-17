@@ -100,25 +100,48 @@ pkgconfig_prefix_template() {
          {} \;
 }
 
+strip_cray_blocks() {
+    HUGEPAGES_SNIPPET=$(cat <<'EOF'
+# libhugetlbfs is expected in /usr/lib64
+CRAY_MPICH_OPT_LIBS="-Wl,-rpath,$libdir"
+if test -e /usr/lib64/libhugetlbfs.so; then
+    CRAY_MPICH_OPT_LIBS="-Wl,--whole-archive,-lhugetlbfs,--no-whole-archive"
+fi
+EOF
+)
+
+    SNIPPET="$HUGEPAGES_SNIPPET" awk '
+    /^# A temporary statement to invoke the compiler/ && !tail {
+        tail = 1
+        print ENVIRON["SNIPPET"]
+        print ""
+    }
+    !tail && /^# BEGIN CRAY MODIFICATION/ { skip = 1; next }
+    skip  && /^# END CRAY MODIFICATION/   { skip = 0; next }
+    !skip { print }
+    ' "$1" > "$1.tmp" && cat "$1.tmp" > "$1" && rm "$1.tmp"
+}
+
 # $1: install dir, $2: sed BRE matching the libmpi name (without -l)
 patch_mpi_wrappers() {
-	(
-		cd "$1/bin" || exit 1
-		# shellcheck disable=SC2016
-		for i in mpicc mpicxx mpifort; do
-			sed -i -e 's#^prefix=.*#prefix="@@PREFIX@@"#' \
-				-e 's#^exec_prefix=.*#exec_prefix=$prefix#' \
-				-e 's#^sysconfdir=.*#sysconfdir=$prefix/etc#' \
-				-e 's#^includedir=.*#includedir=$prefix/include#' \
-				-e 's#^modincdir=.*#modincdir=$prefix/include#' \
-				-e 's#^libdir=.*#libdir=$prefix/lib#' \
-				$i
-			sed -i '/^[[:space:]]*\$Show /s/-l\('"$2"'\) /-Wl,--disable-new-dtags -Wl,-rpath,\$libdir -l\1 @@GTL_LIBRARY@@ /' $i
-		done
-		sed -i 's/^CXX=.*/CXX="@@CXX@@"/' mpicxx
-		sed -i 's/^CC=.*/CC="@@CC@@"/' mpicc
-		sed -i 's/^FC=.*/FC="@@FC@@"/' mpifort
-	)
+	  (
+		    cd "$1/bin" || exit 1
+		    # shellcheck disable=SC2016
+		    for i in mpicc mpicxx mpifort; do
+            strip_cray_blocks $i
+			      sed -i -e 's#^prefix=.*#prefix="@@PREFIX@@"#' \
+				        -e 's#^exec_prefix=.*#exec_prefix=$prefix#' \
+				        -e 's#^sysconfdir=.*#sysconfdir=$prefix/etc#' \
+				        -e 's#^includedir=.*#includedir=$prefix/include#' \
+				        -e 's#^modincdir=.*#modincdir=$prefix/include#' \
+				        -e 's#^libdir=.*#libdir=$prefix/lib#' \
+				        $i
+			      # sed -i '/^[[:space:]]*\$Show /s/-l\('"$2"'\) /-Wl,--disable-new-dtags -Wl,-rpath,\$libdir -l\1 @@GTL_LIBRARY@@ /' $i
+		    done
+		    sed -i 's/^CXX=.*/CXX="@@CXX@@"/' mpicxx
+		    sed -i 's/^CC=.*/CC="@@CC@@"/' mpicc
+		    sed -i 's/^FC=.*/FC="@@FC@@"/' mpifort
+	  )
 }
 
 rpm2tar_pals() {
@@ -132,7 +155,7 @@ rpm2tar_pals() {
 	# extract rpm to tmpdir
 	tmpdir=$(mktemp -d)
 	find ${rpmdir} -maxdepth 1 -name "*pals*.rpm" \
-		-exec sh -c "rpm2cpio $1 | cpio -idmv -D ${tmpdir}" shell {} \;
+		-exec sh -c 'rpm2cpio "$1" | cpio -idmv -D "$2"' shell {} "${tmpdir}" \;
 	# find include, bin, lib directory in tmpdir
 	find ${tmpdir} -name include -type d -exec cp -a {} ${_dst} \;
 	find ${tmpdir} -name bin -type d -exec cp -a {} ${_dst} \;
@@ -162,7 +185,7 @@ rpm2tar_pmi() {
 	  mkdir -p ${_dst}
 	  tmpdir=$(mktemp -d)
 	  find ${rpmdir} -maxdepth 1 -name "*pmi*.rpm" \
-		     -exec sh -c "rpm2cpio $1 | cpio -idmv -D ${tmpdir}" shell {} \;
+		     -exec sh -c 'rpm2cpio "$1" | cpio -idmv -D "$2"' shell {} "${tmpdir}" \;
 	  # find include, bin, lib directory in tmpdir
 	  find ${tmpdir} -name include -type d -exec cp -a {} ${_dst} \;
 	  find ${tmpdir} -name bin -type d -exec cp -a {} ${_dst} \;
@@ -193,7 +216,7 @@ rpm2tar_gtl() {
 	  mkdir -p ${_dst}
 	  tmpdir=$(mktemp -d)
 	  find ${rpmdir} -maxdepth 1 -name "cray-mpich*gtl*" \
-		     -exec sh -c "rpm2cpio $1 | cpio -idmv -D ${tmpdir}" shell {} \;
+		     -exec sh -c 'rpm2cpio "$1" | cpio -idmv -D "$2"' shell {} "${tmpdir}" \;
 
 	  # find include, bin, lib directory in tmpdir
 	  find ${tmpdir} -name include -type d -exec cp -a {} ${_dst} \;
@@ -224,9 +247,9 @@ repack_mpich-gcc() {
 	mkdir -p ${_dst}
 	tmpdir=$(mktemp -d)
 	find ${rpmdir} -maxdepth 1 -name "*mpich*gnu*.rpm" \
-		-exec sh -c "rpm2cpio $1 | cpio -idmv -D ${tmpdir}" shell {} \;
+		-exec sh -c 'rpm2cpio "$1" | cpio -idmv -D "$2"' shell {} "${tmpdir}" \;
 	find ${rpmdir} -maxdepth 1 -name "*mpich*doc*.rpm" \
-		-exec sh -c "rpm2cpio $1 | cpio -idmv -D ${tmpdir}" shell {} \;
+		-exec sh -c 'rpm2cpio "$1" | cpio -idmv -D "$2"' shell {} "${tmpdir}" \;
 
 	# find include, bin, lib directory in tmpdir
 	find ${tmpdir} -name include -type d -exec cp -a {} ${_dst} \;
@@ -273,9 +296,9 @@ repack_mpich-intel() {
 	mkdir -p ${_dst}
 	tmpdir=$(mktemp -d)
 	find ${rpmdir} -maxdepth 1 -name "*mpich*intel*.rpm" \
-		-exec sh -c "rpm2cpio $1 | cpio -idmv -D ${tmpdir}" shell {} \;
+		-exec sh -c 'rpm2cpio "$1" | cpio -idmv -D "$2"' shell {} "${tmpdir}" \;
 	find ${rpmdir} -maxdepth 1 -name "*mpich*doc*.rpm" \
-		-exec sh -c "rpm2cpio $1 | cpio -idmv -D ${tmpdir}" shell {} \;
+		-exec sh -c 'rpm2cpio "$1" | cpio -idmv -D "$2"' shell {} "${tmpdir}" \;
 
 	# find include, bin, lib directory in tmpdir
 	find ${tmpdir} -name include -type d -exec cp -a {} ${_dst} \;
@@ -320,9 +343,9 @@ repack_mpich-nvhpc() {
 	mkdir -p ${_dst}
 	tmpdir=$(mktemp -d)
 	find ${rpmdir} -name "*mpich*nvidia*.rpm" \
-		-exec sh -c "rpm2cpio $1 | cpio -idmv -D ${tmpdir}" shell {} \;
+		-exec sh -c 'rpm2cpio "$1" | cpio -idmv -D "$2"' shell {} "${tmpdir}" \;
 	find ${rpmdir} -name "*mpich*doc*.rpm" \
-		-exec sh -c "rpm2cpio $1 | cpio -idmv -D ${tmpdir}" shell {} \;
+		-exec sh -c 'rpm2cpio "$1" | cpio -idmv -D "$2"' shell {} "${tmpdir}" \;
 	# find include, bin, lib directory in tmpdir
 	find ${tmpdir} -name include -type d -exec cp -a {} ${_dst} \;
 	find ${tmpdir} -name bin -type d -exec cp -a {} ${_dst} \;

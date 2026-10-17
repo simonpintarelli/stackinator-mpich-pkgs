@@ -1,0 +1,179 @@
+#+TITLE: Fetching cray-mpich rpms from the HPE repo
+
+Fetch the cray-mpich, cray-gtl and cray-pmi rpms from an HPE CPE rpm repository
+with plain =curl=, without a SLES container or =dnf=, and turn them into tarballs
+with =rpm2tar.sh=.
+
+* Overview
+
+| script           | does                                                                     |
+|------------------+--------------------------------------------------------------------------|
+| =repo-fetch.sh=  | downloads the repo metadata, writes =version.table=, downloads the rpms   |
+| =repo-select.py= | filter used by =repo-fetch.sh=: picks the rpms from =primary.xml=          |
+| =rpm2tar.sh=     | unpacks the rpms, patches the compiler wrappers, creates the tarballs     |
+
+The HPE repo is a standard rpm-md (yum/dnf/zypper) repository:
+
+#+begin_example
+<base>/
+  repodata/repomd.xml              index, points to the files below
+  repodata/<sha>-primary.xml.gz    one entry per package: name, arch, version, location
+  repodata/<sha>-filelists.xml.gz  all files of every package
+  aarch64/ x86_64/ noarch/         the rpms
+#+end_example
+
+=repo-fetch.sh= reads =repomd.xml= to find =primary.xml.gz=, passes that file to
+=repo-select.py=, and downloads each selected rpm from =<base>/<location>=.
+
+* Prerequisites
+
+- HPE credentials in a netrc file, by default =~/.netrc-hpe=, or set the
+  =NETRC= environment variable to another file:
+  #+begin_example
+  machine update1.linux.hpe.com login <user> password <token>
+  #+end_example
+  Keep the file private: =chmod 600 ~/.netrc-hpe=.
+
+* Usage
+
+** repo-fetch.sh
+
+#+begin_src bash
+./repo-fetch.sh <repo-base-url> <outdir> [repo-select.py options...]
+#+end_src
+
+- =<repo-base-url>= is the directory that contains =repodata/=.
+- =<outdir>= gets =version.table= and the rpms in =<outdir>/rpm/=.
+- Any further arguments are passed on to =repo-select.py= (see below).
+- Set =DRYRUN=1= to only print the selection and write =version.table=, without
+  downloading anything.
+- rpms that already exist in =<outdir>/rpm/= are not downloaded again.
+
+Example, 26.09 for Grace-Hopper (aarch64):
+#+begin_src bash
+base=https://update1.linux.hpe.com/repo/cpe/26.09/experimental/sle/15.7
+
+# check what would be downloaded
+DRYRUN=1 ./repo-fetch.sh $base GH-26.09 --arch aarch64
+
+# download
+./repo-fetch.sh $base GH-26.09 --arch aarch64
+#+end_src
+
+Result:
+#+begin_example
+GH-26.09/
+  version.table
+  rpm/cray-mpich-9.2.1-doc-9.2.1-1234.sles15sp6.noarch.rpm
+  rpm/cray-mpich-9.2.1-gnu123-9.2.1-1234.sles15sp6.aarch64.rpm
+  rpm/cray-mpich-9.2.1-gnu123-devel-9.2.1-1234.sles15sp6.aarch64.rpm
+  rpm/cray-mpich-9.2.1-gnu123-fortran-9.2.1-1234.sles15sp6.aarch64.rpm
+  rpm/cray-mpich-9.2.1-gtl-9.2.1-1234.sles15sp6.aarch64.rpm
+  rpm/cray-mpich-9.2.1-nvidia263-9.2.1-1234.sles15sp6.aarch64.rpm
+  rpm/cray-mpich-9.2.1-nvidia263-devel-9.2.1-1234.sles15sp6.aarch64.rpm
+  rpm/cray-mpich-9.2.1-nvidia263-fortran-9.2.1-1234.sles15sp6.aarch64.rpm
+  rpm/cray-pmi-6.1.18-0-90.sles15sp6.aarch64.rpm
+  rpm/cray-pmi-devel-6.1.18-0-90.sles15sp6.aarch64.rpm
+  rpm/cray-pmi-doc-6.1.18-0-90.sles15sp6.aarch64.rpm
+#+end_example
+
+=version.table= has one =<file>.rpm <version>= line per rpm, which is the format
+=rpm2tar.sh= reads:
+#+begin_example
+cray-mpich-9.2.1-gnu123-9.2.1-1234.sles15sp6.aarch64.rpm 9.2.1
+cray-pmi-6.1.18-0-90.sles15sp6.aarch64.rpm 6.1.18
+...
+#+end_example
+
+** repo-select.py
+
+Reads =primary.xml= (gzipped or plain) on stdin and prints =<location> <version>=
+for each selected rpm. =repo-fetch.sh= calls it, but it can also be run on its
+own:
+
+#+begin_src bash
+curl -sSf --netrc-file ~/.netrc-hpe $base/repodata/<sha>-primary.xml.gz \
+    | python3 -I repo-select.py --arch x86_64 --mpich-version 9.2.0
+#+end_src
+
+| option                  | default   | meaning                                                         |
+|-------------------------+-----------+-----------------------------------------------------------------|
+| =--arch=                | =aarch64= | =aarch64= or =x86_64=; =noarch= packages are always included    |
+| =--mpich-version=       | newest    | keep only this cray-mpich version, e.g. =9.2.0=                 |
+| =--pattern REGEX=       | see below | package-name regex (full match), repeatable; replaces defaults |
+| =--all-builds=          | off       | keep every build, not only the newest one per package           |
+
+Default selection (matched against the rpm package name):
+
+| pattern                                          | packages                                     |
+|--------------------------------------------------+----------------------------------------------|
+| =cray-mpich-<ver>-(gnu\vert{}nvidia)<n>(-devel\vert{}-fortran)?= | cray-mpich for gcc and nvhpc, devel, fortran |
+| =cray-mpich-<ver>-(gtl\vert{}doc)=               | GPU transport layer, docs (noarch)           |
+| =cray-pmi(-devel\vert{}-doc)?=                   | PMI                                          |
+| =cray-pals=                                      | PALS (not in the 26.09 repo, see below)      |
+
+Selection rules:
+- Only one cray-mpich version is kept: the newest, or the one given with
+  =--mpich-version=. Other packages (pmi, pals) are not affected by this.
+- If a package has several builds (e.g. =cray-mpich-9.2.0-gnu123= release
+  =1139= and =1186=), the highest version-release is kept.
+- The version printed is taken from the package name when it contains one,
+  because cray-pmi stores its version in the name and has =ver=0=.
+
+Extra packages, e.g. =ioutils=: =--pattern= replaces the defaults, so repeat them:
+#+begin_src bash
+./repo-fetch.sh $base GH-26.09 --arch aarch64 \
+    --pattern 'cray-mpich-[\d.]+-(gnu|nvidia)\d+(-devel|-fortran)?' \
+    --pattern 'cray-mpich-[\d.]+-(gtl|doc|ioutils)' \
+    --pattern 'cray-pmi(-devel|-doc)?(-[\d.]+)?' \
+    --pattern 'cray-pals(-[\d.]+)?'
+#+end_src
+
+* Building the tarballs
+
+#+begin_src bash
+./rpm2tar.sh [-s <srcdir>] [-t <version.table>] [-i] [-x]
+#+end_src
+
+| option               | default         | meaning                                                         |
+|----------------------+-----------------+-----------------------------------------------------------------|
+| =-s <srcdir>=        | =rpm=           | directory containing the rpms                                   |
+| =-t <version.table>= | =version.table= | file with =<file>.rpm <version>= lines (from =repo-fetch.sh=)   |
+| =-i=                 | off             | include =pmi=, =gtl=, =pals= in the cray-mpich tarball          |
+| =-x=                 | off             | combine =gcc= and =nvhpc= in a single cray-mpich tarball        |
+| =-h=                 |                 | print help                                                      |
+
+The rpm directory must contain cray-mpich for gnu and nvidia, gtl, pmi and pals.
+
+Examples, run from the output directory of =repo-fetch.sh=:
+
+Create =cray-mpich-<mpich-ver>.tar.gz= with =gcc= and =nvhpc= in subdirectories
+(=-x=), and =pmi=, =gtl=, =pals= in separate tarballs:
+#+begin_src bash
+../rpm2tar.sh -s rpm -t version.table -x
+#+end_src
+
+* cray-pals
+
+=cray-pals= is not in the upstream HPE repo. Copy the rpm into =<outdir>/rpm/=
+by hand and add a line to =version.table= before running =rpm2tar.sh=:
+#+begin_src bash
+cp cray-pals-1.3.2-1.3.2-20231002175737.b4642e7d5d70.x86_64.rpm GH-26.09/rpm/
+echo "cray-pals-1.3.2-1.3.2-20231002175737.b4642e7d5d70.x86_64.rpm 1.3.2" >> GH-26.09/version.table
+#+end_src
+
+Running =repo-fetch.sh= again rewrites =version.table=, so repeat the =echo=
+afterwards.
+
+* Tips
+
+- List all package names in a repo:
+  #+begin_src bash
+  zcat primary.xml.gz | grep -o '<name>[^<]*</name>' | sort -u
+  #+end_src
+- Find which rpm contains a file, using =filelists.xml.gz= (also listed in
+  =repomd.xml=):
+  #+begin_src bash
+  zcat <sha>-filelists.xml.gz \
+      | awk -F'"' '/<package /{pkg=$4"."$6} /libmpi_gtl_cuda/{print pkg}' | sort -u
+  #+end_src
